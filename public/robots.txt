@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dungnt.io.vn/sitemap.xml

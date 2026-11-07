@@ -1,0 +1,257 @@
+@import 'tailwindcss';
+
+/* Metric-matched fallbacks: text keeps the same size while web fonts load → no layout shift on swap. */
+@font-face { font-family: 'Inter Fallback'; src: local('Arial'); size-adjust: 107.06%; ascent-override: 90.49%; descent-override: 22.56%; line-gap-override: 0%; }
+@font-face { font-family: 'JetBrains Mono Fallback'; src: local('Courier New'); size-adjust: 100%; ascent-override: 102%; descent-override: 30%; line-gap-override: 0%; }
+
+/* Design tokens — themes switch via [data-theme] and [data-accent] on <html> */
+@theme {
+  --font-sans: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, monospace;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+}
+
+:root {
+  --bg: #07080c;
+  --surface: rgb(255 255 255 / 0.04);
+  --border: rgb(255 255 255 / 0.09);
+  --fg: #eef0f6;
+  --muted: #a3aabb;
+  --accent: #22d3ee;
+  --accent-2: #a78bfa;
+  --comment: #7fb069;
+  --chip: rgb(11 15 26 / .9);
+  --on-accent: #05070d;
+  --prompt: #34d399;
+  color-scheme: dark;
+}
+/* LIGHT = "blueprint": ink on cool paper, solid elevation, no glow. Accents are deep inks (≥ 4.5:1 on bg). */
+:root[data-theme='light'] {
+  --bg: #f3f6fb;
+  --surface: rgb(255 255 255 / 0.75);
+  --border: rgb(15 23 42 / 0.12);
+  --fg: #0a1020;
+  --muted: #3f4a63;
+  --comment: #2f6b1a;
+  --chip: #ffffff;
+  --on-accent: #ffffff;
+  --prompt: #047857;
+  color-scheme: light;
+}
+:root[data-accent='aurora'] { --accent: #22d3ee; --accent-2: #a78bfa; }
+:root[data-accent='sunset'] { --accent: #fb7185; --accent-2: #fbbf24; }
+:root[data-accent='matrix'] { --accent: #4ade80; --accent-2: #22d3ee; }
+
+html { scroll-padding-top: 5rem; }
+/* never allow sideways scrolling (3D labels / glows can extend past the edge); clip ≠ hidden → sticky still works */
+html, body { overflow-x: clip; }
+html { scrollbar-gutter: stable; } /* scrollbar space is always reserved, so hiding it (boot loader, menus) never reflows the page */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+/* Custom hardware cursor (set up in layout/CursorGlow): a dot everywhere, a ring over large clickable cards */
+@media (pointer: fine) {
+  html.has-custom-cursor, html.has-custom-cursor body { cursor: var(--cursor-dot), auto; }
+  html.has-custom-cursor :is(a, button, [role="button"], summary, label[for]) { cursor: var(--cursor-dot), pointer; }
+  html.has-custom-cursor[data-cursor="ring"] :is(a, button, [role="button"]) { cursor: var(--cursor-ring), pointer; }
+  html.has-custom-cursor :is(input, textarea, [contenteditable]) { cursor: text; }
+}
+.cursor-frame {
+  will-change: transform, width, height;
+  transition: transform .18s cubic-bezier(.22,1,.36,1), width .18s cubic-bezier(.22,1,.36,1), height .18s cubic-bezier(.22,1,.36,1), border-radius .18s, opacity .2s;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .4s ease, color .4s ease;
+}
+@media (min-width: 768px) { body { padding-bottom: 1.5rem; } } /* room for the IDE status bar */
+::selection { background: color-mix(in oklab, var(--accent) 35%, transparent); }
+
+.text-gradient {
+  background: linear-gradient(100deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.grain::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Premium card: layered surface + gradient hairline border */
+.card {
+  position: relative;
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--fg) 5%, transparent), color-mix(in oklab, var(--fg) 1.5%, transparent));
+  box-shadow: 0 1px 0 0 color-mix(in oklab, var(--fg) 8%, transparent) inset, 0 20px 50px -30px rgb(0 0 0 / .6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.card::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg,
+    color-mix(in oklab, var(--accent) 55%, transparent),
+    color-mix(in oklab, var(--fg) 10%, transparent) 30%,
+    color-mix(in oklab, var(--fg) 6%, transparent) 70%,
+    color-mix(in oklab, var(--accent-2) 45%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .55; transition: opacity .3s;
+}
+.card:hover::after { opacity: 1; }
+/* Cards that sit on top of a line (journey rail): same glass tint, but over an opaque base so the line never shows through */
+.card.card-solid {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--fg) 5%, transparent), color-mix(in oklab, var(--fg) 1.5%, transparent)),
+    var(--bg);
+}
+
+/* Ambient aurora background */
+@keyframes drift1 { 50% { transform: translate(12vw, 8vh) scale(1.15); } }
+@keyframes drift2 { 50% { transform: translate(-10vw, -6vh) scale(1.2); } }
+.aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.aurora span { position: absolute; border-radius: 9999px; filter: blur(110px); opacity: .22; }
+.aurora span:nth-child(1) { width: 46vw; height: 46vw; left: -10vw; top: 10vh; background: var(--accent); animation: drift1 26s ease-in-out infinite; }
+.aurora span:nth-child(2) { width: 40vw; height: 40vw; right: -8vw; top: 45vh; background: var(--accent-2); animation: drift2 32s ease-in-out infinite; }
+.aurora::after {
+  content: ''; position: absolute; inset: 0;
+  background-image: linear-gradient(color-mix(in oklab, var(--fg) 5%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, var(--fg) 5%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at 50% 30%, #000 20%, transparent 75%);
+}
+
+/* Spotlight card: follows cursor via --mx/--my set in JS */
+.spotlight { position: relative; isolation: isolate; }
+.spotlight::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: -1; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, var(--accent) 16%, transparent), transparent 60%);
+}
+.spotlight:hover::before { opacity: 1; }
+
+/* Tech orbit */
+@keyframes orbit { to { transform: rotate(360deg); } }
+.orbit-spin { animation: orbit linear infinite; will-change: transform; }
+/* the hovered planet (and its tooltip) is drawn above the others; the system keeps turning */
+.orbit-planet:hover { z-index: 10; }
+
+/* Deep-space starfield: 3 parallax layers of tiny vector dots, twinkling */
+@keyframes twinkle { 50% { opacity: .35; } }
+.stars { position: absolute; inset: -50%; background-repeat: repeat; animation: twinkle 6s ease-in-out infinite; }
+.stars.s1 { background-image: radial-gradient(1px 1px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 130px 80px, #cbd5ff, transparent), radial-gradient(1px 1px at 70px 160px, #fff, transparent); background-size: 200px 200px; opacity: .5; }
+.stars.s2 { background-image: radial-gradient(1.5px 1.5px at 60px 90px, #a5f3fc, transparent), radial-gradient(1.5px 1.5px at 260px 210px, #fff, transparent); background-size: 320px 320px; opacity: .45; animation-delay: -2s; }
+.stars.s3 { background-image: radial-gradient(2px 2px at 150px 40px, #e9d5ff, transparent); background-size: 480px 480px; opacity: .55; animation-delay: -4s; }
+
+@keyframes marquee { to { transform: translateX(-50%); } }
+.animate-marquee { animation: marquee 40s linear infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.caret { animation: blink 1s step-end infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ================= LIGHT THEME — "blueprint" ================= */
+:root[data-theme='light'][data-accent='aurora'] { --accent: #0369a1; --accent-2: #6d28d9; }
+:root[data-theme='light'][data-accent='sunset'] { --accent: #be123c; --accent-2: #b45309; }
+:root[data-theme='light'][data-accent='matrix'] { --accent: #15803d; --accent-2: #0e7490; }
+
+:root[data-theme='light'] body {
+  background:
+    radial-gradient(1100px 560px at 85% -10%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 60%),
+    radial-gradient(900px 520px at -10% 35%, color-mix(in oklab, var(--accent-2) 12%, transparent), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+/* blueprint grid: fine + major lines in ink */
+:root[data-theme='light'] .aurora::after {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--accent) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--accent) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in oklab, var(--accent) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--accent) 4%, transparent) 1px, transparent 1px);
+  background-size: 128px 128px, 128px 128px, 16px 16px, 16px 16px;
+  mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 85%);
+}
+:root[data-theme='light'] .aurora span { opacity: .16; }
+/* stars become drifting ink particles */
+:root[data-theme='light'] .stars.s1 { background-image: radial-gradient(1.5px 1.5px at 20px 30px, var(--accent), transparent), radial-gradient(1.5px 1.5px at 130px 80px, var(--accent-2), transparent); opacity: .35; }
+:root[data-theme='light'] .stars.s2, :root[data-theme='light'] .stars.s3 { opacity: .2; filter: hue-rotate(0deg); }
+
+/* cards: white sheets with layered shadows */
+:root[data-theme='light'] .card {
+  background: #ffffff;
+  box-shadow: 0 1px 0 rgb(255 255 255) inset, 0 1px 2px rgb(15 23 42 / .06), 0 18px 40px -18px rgb(15 23 42 / .22);
+}
+:root[data-theme='light'] .card::after { opacity: .85; }
+:root[data-theme='light'] .text-gradient { filter: saturate(1.15); }
+
+/* Phones / touch devices: drop effects that force full-screen repaints every frame (blur filters,
+   backdrop blur, animated blobs, fixed noise overlay). Same look, a fraction of the GPU cost. */
+@media (pointer: coarse), (max-width: 767px) {
+  .aurora span { filter: none; animation: none; opacity: .28; }
+  .aurora span:nth-child(1) { background: radial-gradient(closest-side, var(--accent), transparent); }
+  .aurora span:nth-child(2) { background: radial-gradient(closest-side, var(--accent-2), transparent); }
+  .glass, .card, [class*='backdrop-blur'] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .grain::after { display: none; }
+}
+
+/* Compositor-only loops (transform), cheap even on phones */
+@keyframes scan { from { transform: translateY(-100%); } to { transform: translateY(1400%); } }
+.scanline { animation: scan 3s linear infinite; will-change: transform; }
+/* scale only: Tailwind v4 centres with the separate `translate` property, so translate here would double it */
+@keyframes sun-pulse { 50% { scale: 1.05; } }
+.sun-pulse { animation: sun-pulse 4s ease-in-out infinite; will-change: scale; }
+
+/* ── UFO guide (src/features/ufo) — transform/opacity only ─────────────────── */
+@keyframes ufo-hover { 50% { transform: translateY(-7px); } }
+.ufo-hover { animation: ufo-hover 3.2s ease-in-out infinite; will-change: transform; }
+.ufo-body { filter: drop-shadow(0 10px 18px rgb(0 0 0 / .45)); }
+@keyframes ufo-rim { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+.ufo-rim { animation: ufo-rim 1.3s ease-in-out infinite; }
+.ufo-engine {
+  position: absolute; left: 50%; top: 74px; width: 120px; height: 34px; transform: translateX(-50%);
+  border-radius: 9999px; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 70%, transparent), transparent);
+  animation: ufo-engine 2.4s ease-in-out infinite;
+}
+@keyframes ufo-engine { 50% { opacity: .55; transform: translateX(-50%) scale(.85); } }
+.ufo-beam {
+  position: absolute; left: 50%; top: 84px; width: 170px; height: 46vh; pointer-events: none;
+  transform: translateX(-50%) scaleY(.2); transform-origin: top center; opacity: 0;
+  clip-path: polygon(41% 0, 59% 0, 100% 100%, 0 100%);
+  background:
+    repeating-linear-gradient(180deg, transparent 0 14px, color-mix(in oklab, var(--accent) 22%, transparent) 14px 16px),
+    linear-gradient(180deg, color-mix(in oklab, var(--accent) 55%, transparent), color-mix(in oklab, var(--accent-2) 12%, transparent) 70%, transparent);
+  transition: opacity .5s ease, transform .7s cubic-bezier(.16, 1, .3, 1);
+}
+.ufo-beam.is-on { opacity: .85; transform: translateX(-50%) scaleY(1); }
+@media (max-width: 1023px) { .ufo-beam { height: 24vh; width: 130px; } }
+
+/* "the world reacts": the section under the beam lights up */
+section[data-ufo-lit] h2 { text-shadow: 0 0 28px color-mix(in oklab, var(--accent) 55%, transparent); transition: text-shadow .6s ease; }
+section h2 { transition: text-shadow .6s ease; }
+section[data-ufo-lit]::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 70vh; pointer-events: none; z-index: 0;
+  background: radial-gradient(60% 55% at 50% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%);
+  animation: ufo-pool .8s ease both;
+}
+@keyframes ufo-pool { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ufo-hover, .ufo-rim, .ufo-engine { animation: none; } }
+
+/* in-page navigation: render every section so anchor offsets are exact (see scrollToId) */
+.cv-all section { content-visibility: visible !important; }

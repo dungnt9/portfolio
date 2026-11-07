@@ -1,0 +1,76 @@
+name: CI
+
+# Pipeline: changes → test → deploy.
+# The repo is kept as one amended commit that is force-pushed, so GitHub's `paths` / `paths-ignore`
+# filters cannot be used (they never trigger on a force-pushed new root commit). Instead the `changes`
+# job diffs the pushed tree against the previously pushed one (github.event.before):
+#   docs only (*.md, docs/**, LICENSE, .gitignore, .vscode/**)   → nothing runs
+#   tests / workflows / compose file only                        → test only, no deploy (site unchanged)
+#   anything else (src, public, index.html, Dockerfile, nginx…)  → test, then deploy
+# If the previous commit cannot be fetched, everything runs (safe default).
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      app: ${{ steps.diff.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          all() { echo "code=true" >> "$GITHUB_OUTPUT"; echo "app=true" >> "$GITHUB_OUTPUT"; echo "→ running everything ($1)"; exit 0; }
+          [ "$EVENT" = push ] || all "$EVENT"
+          { [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; } || all "new branch"
+          git fetch -q --depth=1 origin "$BEFORE" || all "previous commit not fetchable"
+          files=$(git diff --name-only "$BEFORE" HEAD)
+          echo "Changed files:"; echo "$files"
+          code=$(echo "$files" | grep -vE '\.md$|^docs/|^LICENSE$|^\.gitignore$|^\.vscode/' || true)
+          app=$(echo "$code" | grep -vE '^tests/|^\.github/|^deploy/docker-compose\.yml$' || true)
+          echo "code=$([ -n "$code" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "app=$([ -n "$app" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx playwright install --with-deps chromium
+      # UI acceptance suite (layout, features, a11y) on desktop + mobile; all 5 viewports run locally.
+      # Visual-diff baselines are OS-specific, so they are skipped on Linux CI.
+      - run: npx playwright test --grep-invert "visual:" --project=desktop --project=mobile
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: tests/report
+          retention-days: 14
+
+  deploy:
+    needs: [changes, test]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.changes.outputs.app == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

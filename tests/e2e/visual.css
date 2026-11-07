@@ -1,0 +1,4 @@
+/* Visual baselines: hide the scroll-driven UFO guide (its spring-animated position is not deterministic). */
+.ufo, .ufo-beam { visibility: hidden !important; }
+section[data-ufo-lit]::before { display: none !important; }
+section h2 { text-shadow: none !important; }

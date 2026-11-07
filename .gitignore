@@ -1,0 +1,27 @@
+# deps & build
+node_modules/
+dist/
+
+# Playwright outputs
+tests/results/
+tests/report/
+playwright-report/
+test-results/
+blob-report/
+
+# ad-hoc screenshots & logs
+tests/shots*/
+*.log
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+tests/_*.mjs
+dist-*/
